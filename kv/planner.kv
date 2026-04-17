@@ -1,0 +1,412 @@
+#:kivy 2.1.0
+
+<PlannerScreenManager>:
+    LoginScreen:
+        name: "login"
+    DashboardScreen:
+        name: "dashboard"
+    AddTaskScreen:
+        name: "add_task"
+    TaskDetailScreen:
+        name: "task_detail"
+
+
+<LoginScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(10)
+
+        Label:
+            text: "Smart Student Planner"
+            font_size: "24sp"
+            size_hint_y: None
+            height: self.texture_size[1] + dp(10)
+
+        Label:
+            text: "Login"
+            font_size: "20sp"
+            size_hint_y: None
+            height: self.texture_size[1] + dp(10)
+
+        TextInput:
+            id: username_input
+            hint_text: "Username"
+            multiline: False
+            size_hint_y: None
+            height: dp(40)
+            on_text: root.clear_error()
+
+        TextInput:
+            id: password_input
+            hint_text: "Password"
+            multiline: False
+            password: True
+            size_hint_y: None
+            height: dp(40)
+            on_text: root.clear_error()
+
+        Label:
+            text: root.error_message
+            color: 1, 0, 0, 1
+            size_hint_y: None
+            height: dp(20)
+
+        Button:
+            text: "Login"
+            size_hint_y: None
+            height: dp(45)
+            on_release:
+                root.attempt_login(username_input.text, password_input.text)
+
+        Widget:
+            size_hint_y: 1
+
+
+<DashboardScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(10)
+        spacing: dp(10)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            spacing: dp(10)
+
+            TextInput:
+                id: search_input
+                hint_text: "Search by title or module..."
+                multiline: False
+                on_text: root.on_search_query(root, self.text)
+
+            Button:
+                text: "Logout"
+                size_hint_x: None
+                width: dp(90)
+                on_release: root.logout()
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(40)
+
+            Label:
+                text: "Your Tasks"
+                font_size: "18sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            Button:
+                text: "Add Task"
+                size_hint_x: None
+                width: dp(120)
+                on_release: root.open_add_task()
+
+        ScrollView:
+            do_scroll_x: False
+
+            BoxLayout:
+                id: tasks_container
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(5)
+                padding: 0, 0, 0, dp(10)
+
+                on_parent:
+                    root.refresh_tasks()
+
+        Label:
+            text: "Tip: Tap a task to view details."
+            size_hint_y: None
+            height: dp(20)
+            font_size: "12sp"
+            color: 0.4, 0.4, 0.4, 1
+
+
+<TaskListItem>:
+    size_hint_y: None
+    height: dp(70)
+    background_normal: ""
+    background_color: 0, 0, 0, 0
+
+    on_release:
+        if self.open_detail_callback: self.open_detail_callback(self.task_id)
+
+    canvas.before:
+        Color:
+            rgba: (0.8, 1, 0.8, 1) if self.priority == "Low" else ((1, 1, 0.8, 1) if self.priority == "Medium" else (1, 0.8, 0.8, 1))
+        RoundedRectangle:
+            radius: [dp(6), dp(6), dp(6), dp(6)]
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(8)
+        spacing: dp(4)
+
+        BoxLayout:
+            spacing: dp(5)
+            Label:
+                text: "[b]" + root.title + "[/b]"
+                markup: True
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            Label:
+                text: "Due: " + root.due_date
+                font_size: "12sp"
+                size_hint_x: None
+                width: dp(110)
+
+        BoxLayout:
+            spacing: dp(5)
+            Label:
+                text: root.module
+                font_size: "12sp"
+                color: 0.1, 0.1, 0.1, 1
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+            Label:
+                text: "Priority: " + root.priority
+                font_size: "12sp"
+                size_hint_x: None
+                width: dp(110)
+
+        Label:
+            text: "Completed" if root.is_completed else "Not completed"
+            font_size: "12sp"
+            color: (0, 0.6, 0, 1) if root.is_completed else (0.6, 0, 0, 1)
+            size_hint_y: None
+            height: dp(16)
+
+
+<AddTaskScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(10)
+        spacing: dp(10)
+
+        Label:
+            text: "Edit Task" if root.is_edit_mode else "Add New Task"
+            font_size: "20sp"
+            size_hint_y: None
+            height: dp(30)
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(8)
+
+            TextInput:
+                id: title_input
+                hint_text: "Title"
+                multiline: False
+                size_hint_y: None
+                height: dp(40)
+
+            TextInput:
+                id: module_input
+                hint_text: "Module / Course"
+                multiline: False
+                size_hint_y: None
+                height: dp(40)
+
+            TextInput:
+                id: due_date_input
+                hint_text: "Due date (YYYY-MM-DD)"
+                multiline: False
+                size_hint_y: None
+                height: dp(40)
+
+            BoxLayout:
+                size_hint_y: None
+                height: dp(40)
+                spacing: dp(10)
+
+                Label:
+                    text: "Priority:"
+                    size_hint_x: None
+                    width: dp(80)
+                    valign: "middle"
+                    text_size: self.size
+
+                Spinner:
+                    id: priority_spinner
+                    text: "Medium"
+                    values: ["Low", "Medium", "High"]
+                    size_hint_y: None
+                    height: dp(40)
+
+            BoxLayout:
+                size_hint_y: None
+                height: dp(40)
+                spacing: dp(10)
+
+                Label:
+                    text: "Completed:"
+                    size_hint_x: None
+                    width: dp(80)
+                    valign: "middle"
+                    text_size: self.size
+
+                CheckBox:
+                    id: completed_checkbox
+                    size_hint_x: None
+                    width: dp(40)
+
+            Label:
+                text: "Notes:"
+                size_hint_y: None
+                height: dp(20)
+
+            TextInput:
+                id: notes_input
+                hint_text: "Optional notes..."
+                multiline: True
+
+        Label:
+            text: root.error_message
+            color: 1, 0, 0, 1
+            size_hint_y: None
+            height: dp(20)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(45)
+            spacing: dp(10)
+
+            Button:
+                text: "Cancel"
+                on_release: root.cancel()
+
+            Button:
+                text: "Save"
+                on_release: root.submit_form()
+
+
+<TaskDetailScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(10)
+        spacing: dp(10)
+
+        Label:
+            text: "Task Details"
+            font_size: "20sp"
+            size_hint_y: None
+            height: dp(30)
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(5)
+
+            Label:
+                text: "[b]Title:[/b] " + root.title_text
+                markup: True
+                text_size: self.size
+                halign: "left"
+                valign: "middle"
+
+            Label:
+                text: "[b]Module:[/b] " + root.module_text
+                markup: True
+                text_size: self.size
+                halign: "left"
+                valign: "middle"
+
+            Label:
+                text: "[b]Due date:[/b] " + root.due_date_text
+                markup: True
+                text_size: self.size
+                halign: "left"
+                valign: "middle"
+
+            Label:
+                text: "[b]Priority:[/b] " + root.priority_text
+                markup: True
+                text_size: self.size
+                halign: "left"
+                valign: "middle"
+
+            Label:
+                text: "[b]Status:[/b] " + ("Completed" if root.is_completed else "Not completed")
+                markup: True
+                text_size: self.size
+                halign: "left"
+                valign: "middle"
+
+            Label:
+                text: "[b]Notes:[/b]\\n" + root.notes_text
+                markup: True
+                text_size: self.size
+                halign: "left"
+                valign: "top"
+
+        Label:
+            text: root.info_message
+            color: 1, 0, 0, 1
+            size_hint_y: None
+            height: dp(20)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(45)
+            spacing: dp(10)
+
+            Button:
+                text: "Back"
+                on_release: root.back_to_dashboard()
+
+            Button:
+                text: "Toggle Complete"
+                on_release: root.toggle_completion()
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(45)
+            spacing: dp(10)
+
+            Button:
+                text: "Edit"
+                on_release: root.open_edit()
+
+            Button:
+                text: "Delete"
+                background_color: 0.8, 0.1, 0.1, 1
+                on_release:
+                    app = App.get_running_app()
+                    app.open_delete_confirmation(root)
+
+
+<DeleteConfirmPopup@Popup>:
+    title: "Confirm delete"
+    size_hint: 0.8, 0.3
+    auto_dismiss: False
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(10)
+        spacing: dp(10)
+
+        Label:
+            text: "Are you sure you want to delete this task?"
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            spacing: dp(10)
+
+            Button:
+                text: "Cancel"
+                on_release: root.dismiss()
+
+            Button:
+                text: "Delete"
+                background_color: 0.8, 0.1, 0.1, 1
+                on_release:
+                    root.parent_task_detail.delete_task()
+                    root.dismiss()
+
