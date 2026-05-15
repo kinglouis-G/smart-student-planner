@@ -7,6 +7,7 @@ This screen provides a simple username/password form. For this
 coursework, we use a basic hard-coded check rather than a database.
 """
 
+import re
 from typing import Optional
 
 from kivy.app import App
@@ -27,7 +28,7 @@ class LoginScreen(Screen):
 
     # Hard-coded credentials for demonstration.
     VALID_USERNAME = "student"
-    VALID_PASSWORD = "password"
+    VALID_PASSWORD = "Password1!"
 
     def clear_error(self) -> None:
         """Clear any existing error message."""
@@ -46,6 +47,22 @@ class LoginScreen(Screen):
 
         if not username or not password:
             self.error_message = "Username and password are required."
+            return
+        
+        if len(password) < 8:
+            self.error_message = "Password must be at least 8 characters."
+            return
+        if not re.search(r'[A-Z]', password):
+            self.error_message = "Password must contain at least one uppercase letter."
+            return
+        if not re.search(r'[a-z]', password):
+            self.error_message = "Password must contain at least one lowercase letter."
+            return
+        if not re.search(r'[0-9]', password):
+            self.error_message = "Password must contain at least one digit."
+            return
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            self.error_message = "Password must contain at least one special character."
             return
 
         if username == self.VALID_USERNAME and password == self.VALID_PASSWORD:
