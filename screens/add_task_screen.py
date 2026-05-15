@@ -7,7 +7,8 @@ This screen is used to create new tasks or edit existing ones.
 It validates user input and persists changes via the DataManager.
 """
 
-from datetime import datetime
+from datetime import date
+from typing import Tuple
 
 from kivy.app import App
 from kivy.properties import BooleanProperty, StringProperty
@@ -89,6 +90,44 @@ class AddTaskScreen(Screen):
         ids.priority_spinner.text = task.priority
         ids.completed_checkbox.active = task.is_completed
 
+    def _validate_form(self, title: str, module: str, due_date_str: str, priority: str) -> Tuple[bool, str]:
+        """
+        Validate all form fields.
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        ok, msg = validate_non_empty(title, "Title")
+        if not ok:
+            return False, msg
+
+        ok, msg = validate_non_empty(module, "Module")
+        if not ok:
+            return False, msg
+
+        ok, msg = validate_date(due_date_str)
+        if not ok:
+            return False, msg
+
+        ok, msg = validate_priority(priority)
+        if not ok:
+            return False, msg
+
+        return True, ""
+
+    def _create_task_from_data(self, title: str, module: str, due_date_obj: date, priority: str, notes: str, is_completed: bool) -> TaskModel:
+        """
+        Create a TaskModel instance from form data.
+        """
+        return TaskModel(
+            title=title,
+            module=module,
+            due_date=due_date_obj,
+            priority=priority,
+            notes=notes,
+            is_completed=is_completed,
+        )
+
     def submit_form(self) -> None:
         """
         Validate form data and create or update a task accordingly.
@@ -101,27 +140,12 @@ class AddTaskScreen(Screen):
         notes = ids.notes_input.text
         is_completed = ids.completed_checkbox.active
 
-        ok, msg = validate_non_empty(title, "Title")
+        ok, msg = self._validate_form(title, module, due_date_str, priority)
         if not ok:
             self.error_message = msg
             return
 
-        ok, msg = validate_non_empty(module, "Module")
-        if not ok:
-            self.error_message = msg
-            return
-
-        ok, msg = validate_date(due_date_str)
-        if not ok:
-            self.error_message = msg
-            return
-
-        ok, msg = validate_priority(priority)
-        if not ok:
-            self.error_message = msg
-            return
-
-        due_date_obj = datetime.strptime(due_date_str, "%Y-%m-%d").date()
+        due_date_obj = date.fromisoformat(due_date_str)
 
         if self.is_edit_mode:
             existing = self.data_manager.get_task(self.editing_task_id)
@@ -140,25 +164,9 @@ class AddTaskScreen(Screen):
             )
             self.data_manager.update_task(existing.task_id, updated_task)
         else:
-            new_task = TaskModel(
-                title=title,
-                module=module,
-                due_date=due_date_obj,
-                priority=priority,
-                notes=notes,
-                is_completed=is_completed,
+            new_task = self._create_task_from_data(
+                title, module, due_date_obj, priority, notes, is_completed
             )
             self.data_manager.add_task(new_task)
 
-        app: App = App.get_running_app()
-        dashboard = app.root.get_screen("dashboard")  # type: ignore[attr-defined]
-        dashboard.refresh_tasks()
-        app.root.current = "dashboard"  # type: ignore[attr-defined]
-
-    def cancel(self) -> None:
-        """
-        Cancel the operation and return to the dashboard without saving.
-        """
-        app: App = App.get_running_app()
-        app.root.current = "dashboard"  # type: ignore[attr-defined]
-
+        app = App.get_running_app()

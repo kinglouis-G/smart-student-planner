@@ -13,6 +13,7 @@ Run this file to start the application:
 import os
 
 from kivy.app import App
+from kivy.factory import Factory
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager
 
@@ -67,8 +68,7 @@ class SmartStudentPlannerApp(App):
             task_detail_screen: The TaskDetailScreen instance that
                 initiated the delete.
         """
-        from kivy.factory import Factory
-
+        
         popup = Factory.DeleteConfirmPopup()
         # Attach the calling TaskDetailScreen so the popup can call delete_task().
         popup.parent_task_detail = task_detail_screen

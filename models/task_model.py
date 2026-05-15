@@ -92,17 +92,3 @@ class TaskModel:
         """
         return uuid.uuid4().hex
 
-    @staticmethod
-    def safe_get(tasks: Dict[str, "TaskModel"], task_id: str) -> Optional["TaskModel"]:
-        """
-        Safely retrieve a task from a mapping by id.
-
-        Args:
-            tasks: Dictionary mapping task_id to TaskModel.
-            task_id: ID of the task to retrieve.
-
-        Returns:
-            TaskModel if found, otherwise None.
-        """
-        return tasks.get(task_id)
-
