@@ -57,6 +57,16 @@
             on_release:
                 root.attempt_login(username_input.text, password_input.text)
 
+        Button:
+            text: "Create account"
+            size_hint_y: None
+            height: dp(40)
+            on_release:
+                from kivy.factory import Factory
+                popup = Factory.CreateUserPopup()
+                popup.parent_screen = root
+                popup.open()
+
         Widget:
             size_hint_y: 1
 
@@ -219,6 +229,49 @@
                     height: dp(40)
                     spacing: dp(10)
 
+                    Button:
+                        text: "Upload image"
+                        on_release: root.open_image_picker()
+
+                    Button:
+                        text: "Use camera"
+                        on_release: root.open_camera()
+
+                Label:
+                    id: image_path_label
+                    text: root.image_path or "No image selected"
+                    size_hint_y: None
+                    height: dp(20)
+                    font_size: "12sp"
+                    color: 0.4, 0.4, 0.4, 1
+                    text_size: self.size
+                    halign: "left"
+                    valign: "middle"
+
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: dp(200)
+                    padding: dp(4)
+                    canvas.before:
+                        Color:
+                            rgba: 0.85, 0.85, 0.85, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+
+                    Image:
+                        id: image_preview
+                        source: root.image_path
+                        allow_stretch: True
+                        keep_ratio: True
+                        size_hint: 1, 1
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(40)
+                    spacing: dp(10)
+
                     Label:
                         text: "Priority:"
                         size_hint_x: None
@@ -272,7 +325,7 @@
 
                 Button:
                     text: "Save"
-                    on_release: root.save_task(title_input.text, module_input.text, due_date_input.text, priority_spinner.text, completed_checkbox.active, notes_input.text)
+                    on_release: root.submit_form()
 
 
 <TaskDetailScreen>:
@@ -315,7 +368,18 @@
                 text: "[b]Notes:[/b]\\n" + root.notes_text
                 markup: True
                 valign: "top"
+            Label:
+                text: "[b]Attached Image:[/b]"
+                markup: True
+                size_hint_y: None
+                height: dp(20)
 
+            Image:
+                source: root.image_path
+                size_hint_y: None
+                height: dp(180)
+                allow_stretch: True
+                keep_ratio: True
         Label:
             text: root.info_message
             color: 1, 0, 0, 1
@@ -379,5 +443,57 @@
                 background_color: 0.8, 0.1, 0.1, 1
                 on_release:
                     root.parent_task_detail.delete_task()
+                    root.dismiss()
+
+
+<CreateUserPopup@Popup>:
+    title: "Create account"
+    size_hint: 0.9, 0.6
+    auto_dismiss: False
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(10)
+        spacing: dp(10)
+
+        TextInput:
+            id: create_username_input
+            hint_text: "Username"
+            size_hint_y: None
+            height: dp(40)
+
+        TextInput:
+            id: create_password_input
+            hint_text: "Password"
+            password: True
+            size_hint_y: None
+            height: dp(40)
+
+        TextInput:
+            id: create_password_confirm_input
+            hint_text: "Confirm password"
+            password: True
+            size_hint_y: None
+            height: dp(40)
+
+        Label:
+            text: (getattr(root, 'parent_screen', None).error_message) if getattr(root, 'parent_screen', None) else ""
+            color: 1, 0, 0, 1
+            size_hint_y: None
+            height: dp(20)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(45)
+            spacing: dp(10)
+
+            Button:
+                text: "Cancel"
+                on_release: root.dismiss()
+
+            Button:
+                text: "Create"
+                on_release:
+                    root.parent_screen.create_user(create_username_input.text, create_password_input.text, create_password_confirm_input.text)
                     root.dismiss()
 

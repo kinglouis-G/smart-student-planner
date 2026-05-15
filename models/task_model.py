@@ -35,6 +35,7 @@ class TaskModel:
     due_date: date
     priority: str
     notes: str = ""
+    image_path: str = ""
     is_completed: bool = False
     task_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
@@ -55,6 +56,7 @@ class TaskModel:
             "due_date": self.due_date.strftime(self.DATE_FORMAT),
             "priority": self.priority,
             "notes": self.notes,
+            "image_path": self.image_path,
             "is_completed": self.is_completed,
         }
 
@@ -79,6 +81,7 @@ class TaskModel:
             due_date=due_date_obj,
             priority=data.get("priority", "Medium"),
             notes=data.get("notes", ""),
+            image_path=data.get("image_path", ""),
             is_completed=bool(data.get("is_completed", False)),
         )
 

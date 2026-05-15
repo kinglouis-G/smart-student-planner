@@ -118,6 +118,11 @@ class DashboardScreen(Screen):
         Navigate back to the login screen and reset its fields.
         """
         app: App = App.get_running_app()
+        # clear the active user
+        try:
+            app.data_manager.set_current_user(None)
+        except Exception:
+            pass
         login_screen = app.root.get_screen("login")  # type: ignore[attr-defined]
         login_screen.reset_fields()
         app.root.current = "login"  # type: ignore[attr-defined]

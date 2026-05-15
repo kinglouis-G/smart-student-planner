@@ -26,6 +26,7 @@ class TaskDetailScreen(Screen):
     due_date_text = StringProperty("")
     priority_text = StringProperty("")
     notes_text = StringProperty("")
+    image_path = StringProperty("")
     is_completed = BooleanProperty(False)
     info_message = StringProperty("")
 
@@ -59,6 +60,7 @@ class TaskDetailScreen(Screen):
         self.due_date_text = task.due_date.strftime(task.DATE_FORMAT)
         self.priority_text = task.priority
         self.notes_text = task.notes or "(No notes)"
+        self.image_path = task.image_path or ""
         self.is_completed = task.is_completed
 
     def toggle_completion(self) -> None:

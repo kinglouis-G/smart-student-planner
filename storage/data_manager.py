@@ -12,6 +12,7 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
+import hashlib
 
 from models.task_model import TaskModel
 
@@ -38,7 +39,12 @@ class DataManager:
 
         self.storage_dir = storage_dir
         self.storage_file = os.path.join(self.storage_dir, "tasks.json")
-        self.tasks: Dict[str, TaskModel] = {}
+        # mapping username -> (task_id -> TaskModel)
+        self._users_tasks: Dict[str, Dict[str, TaskModel]] = {}
+        # current logged-in username
+        self.current_user: Optional[str] = None
+        # simple users store: username -> password_hash
+        self.users: Dict[str, str] = {}
 
         # Ensure the storage directory exists.
         os.makedirs(self.storage_dir, exist_ok=True)
@@ -54,7 +60,7 @@ class DataManager:
         will simply remain empty.
         """
         if not os.path.exists(self.storage_file):
-            self.tasks = {}
+            self._users_tasks = {}
             return
 
         try:
@@ -62,18 +68,35 @@ class DataManager:
                 data = json.load(file)
         except (OSError, json.JSONDecodeError):
             self.tasks = {}
+            self.users = {}
             return
 
-        loaded_tasks: Dict[str, TaskModel] = {}
-        for item in data.get("tasks", []):
-            try:
-                task = TaskModel.from_dict(item)
-                loaded_tasks[task.task_id] = task
-            except Exception:
-                # Skip invalid entries rather than crashing the app.
-                continue
+        # new format: users_tasks is a mapping username->list-of-task-dicts
+        self._users_tasks = {}
+        if "users_tasks" in data:
+            for username, items in data.get("users_tasks", {}).items():
+                user_tasks: Dict[str, TaskModel] = {}
+                for item in items:
+                    try:
+                        task = TaskModel.from_dict(item)
+                        user_tasks[task.task_id] = task
+                    except Exception:
+                        continue
+                self._users_tasks[username] = user_tasks
+        else:
+            # legacy format: single tasks list -> put under a default user
+            loaded_tasks: Dict[str, TaskModel] = {}
+            for item in data.get("tasks", []):
+                try:
+                    task = TaskModel.from_dict(item)
+                    loaded_tasks[task.task_id] = task
+                except Exception:
+                    continue
+            if loaded_tasks:
+                self._users_tasks["default"] = loaded_tasks
 
-        self.tasks = loaded_tasks
+        # load users (simple dict username->hash)
+        self.users = data.get("users", {}) or {}
 
     def save_tasks(self) -> None:
         """
@@ -82,9 +105,16 @@ class DataManager:
         The data is stored as a dict with a 'tasks' list so that the
         format can be extended in the future if needed.
         """
+        # serialize per-user task lists
+        users_tasks_serialized = {
+            username: [task.to_dict() for task in tasks.values()]
+            for username, tasks in self._users_tasks.items()
+        }
+
         serialized = {
             "last_saved": datetime.now().isoformat(timespec="seconds"),
-            "tasks": [task.to_dict() for task in self.tasks.values()],
+            "users_tasks": users_tasks_serialized,
+            "users": self.users,
         }
 
         try:
@@ -101,7 +131,10 @@ class DataManager:
         Returns:
             A list of TaskModel instances.
         """
-        return sorted(self.tasks.values(), key=lambda task: task.due_date)
+        if not self.current_user:
+            return []
+        tasks = self._users_tasks.get(self.current_user, {})
+        return sorted(tasks.values(), key=lambda task: task.due_date)
 
     def get_task(self, task_id: str) -> Optional[TaskModel]:
         """
@@ -113,7 +146,9 @@ class DataManager:
         Returns:
             TaskModel if found, otherwise None.
         """
-        return self.tasks.get(task_id)
+        if not self.current_user:
+            return None
+        return self._users_tasks.get(self.current_user, {}).get(task_id)
 
     def add_task(self, task: TaskModel) -> None:
         """
@@ -122,7 +157,10 @@ class DataManager:
         Args:
             task: The TaskModel instance to add.
         """
-        self.tasks[task.task_id] = task
+        if not self.current_user:
+            return
+        user_tasks = self._users_tasks.setdefault(self.current_user, {})
+        user_tasks[task.task_id] = task
         self.save_tasks()
 
     def update_task(self, task_id: str, updated_task: TaskModel) -> None:
@@ -133,8 +171,11 @@ class DataManager:
             task_id: ID of the task to update.
             updated_task: New TaskModel instance.
         """
-        if task_id in self.tasks:
-            self.tasks[task_id] = updated_task
+        if not self.current_user:
+            return
+        user_tasks = self._users_tasks.get(self.current_user, {})
+        if task_id in user_tasks:
+            user_tasks[task_id] = updated_task
             self.save_tasks()
 
     def delete_task(self, task_id: str) -> None:
@@ -144,9 +185,46 @@ class DataManager:
         Args:
             task_id: ID of the task to delete.
         """
-        if task_id in self.tasks:
-            del self.tasks[task_id]
+        if not self.current_user:
+            return
+        user_tasks = self._users_tasks.get(self.current_user, {})
+        if task_id in user_tasks:
+            del user_tasks[task_id]
             self.save_tasks()
+
+    # -----------------
+    # Per-user helpers
+    # -----------------
+    def set_current_user(self, username: Optional[str]) -> None:
+        """Set the currently active username for subsequent operations."""
+        self.current_user = username
+
+    # -----------------
+    # User management
+    # -----------------
+    def _hash_password(self, password: str) -> str:
+        """Return a SHA-256 hex digest for the given password."""
+        return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+    def user_exists(self, username: str) -> bool:
+        """Return True if a user with `username` exists."""
+        return username in self.users
+
+    def add_user(self, username: str, password: str) -> bool:
+        """Add a new user. Returns False if user exists, True on success."""
+        if not username:
+            return False
+        if self.user_exists(username):
+            return False
+        self.users[username] = self._hash_password(password)
+        self.save_tasks()
+        return True
+
+    def authenticate_user(self, username: str, password: str) -> bool:
+        """Authenticate username/password against stored hash."""
+        if not username or username not in self.users:
+            return False
+        return self.users[username] == self._hash_password(password)
 
     def search_tasks(self, query: str) -> List[TaskModel]:
         """
