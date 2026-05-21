@@ -124,6 +124,10 @@ class DataManager:
             # For coursework we fail silently to avoid crashing.
             pass
 
+    def _get_user_tasks(self) -> Dict[str, TaskModel]:
+        """Return the current user's task dictionary, or an empty dict."""
+        return self._users_tasks.get(self.current_user, {}) if self.current_user else {}
+
     def get_all_tasks(self) -> List[TaskModel]:
         """
         Get all tasks sorted by due date.
@@ -133,7 +137,7 @@ class DataManager:
         """
         if not self.current_user:
             return []
-        tasks = self._users_tasks.get(self.current_user, {})
+        tasks = self._get_user_tasks()
         return sorted(tasks.values(), key=lambda task: task.due_date)
 
     def get_task(self, task_id: str) -> Optional[TaskModel]:
@@ -148,7 +152,7 @@ class DataManager:
         """
         if not self.current_user:
             return None
-        return self._users_tasks.get(self.current_user, {}).get(task_id)
+        return self._get_user_tasks().get(task_id)
 
     def add_task(self, task: TaskModel) -> None:
         """
@@ -195,9 +199,25 @@ class DataManager:
     # -----------------
     # Per-user helpers
     # -----------------
+    def _migrate_default_tasks_to_user(self, username: str) -> None:
+        """Migrate legacy default tasks into the newly active user's account."""
+        if "default" not in self._users_tasks:
+            return
+        if self._users_tasks.get(username):
+            return
+
+        self._users_tasks[username] = {
+            task_id: task
+            for task_id, task in self._users_tasks["default"].items()
+        }
+        del self._users_tasks["default"]
+        self.save_tasks()
+
     def set_current_user(self, username: Optional[str]) -> None:
         """Set the currently active username for subsequent operations."""
         self.current_user = username
+        if username:
+            self._migrate_default_tasks_to_user(username)
 
     # -----------------
     # User management
@@ -255,7 +275,10 @@ class DataManager:
             task_id: ID of the task.
             is_completed: New completion status.
         """
-        task = self.tasks.get(task_id)
+        if not self.current_user:
+            return
+
+        task = self._get_user_tasks().get(task_id)
         if task is None:
             return
 

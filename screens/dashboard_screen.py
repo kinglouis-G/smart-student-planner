@@ -11,7 +11,7 @@ logging out.
 from typing import List
 
 from kivy.app import App
-from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, ListProperty, ObjectProperty, StringProperty
 from kivy.uix.button import Button
 from kivy.uix.screenmanager import Screen
 
@@ -33,6 +33,7 @@ class TaskListItem(Button):
     due_date = StringProperty("")
     priority = StringProperty("")
     is_completed = BooleanProperty(False)
+    card_color = ListProperty([0.94, 0.94, 0.94, 1])
 
     # Callback invoked when the user taps the row.
     open_detail_callback = ObjectProperty(None, allownone=True)
@@ -47,13 +48,23 @@ class DashboardScreen(Screen):
     """
 
     search_query = StringProperty("")
+    welcome_text = StringProperty("Welcome")
 
     def on_pre_enter(self, *args) -> None:
         """
         Called by Kivy just before the screen becomes visible.
         """
         super().on_pre_enter(*args)
+        self._update_welcome_text()
         self.refresh_tasks()
+
+    def _update_welcome_text(self) -> None:
+        """Update the welcome text based on the current user."""
+        username = self.data_manager.current_user
+        if username:
+            self.welcome_text = f"Welcome, {username}!"
+        else:
+            self.welcome_text = "Welcome"
 
     @property
     def data_manager(self) -> DataManager:
@@ -84,6 +95,7 @@ class DashboardScreen(Screen):
             item.due_date = task.due_date.strftime(task.DATE_FORMAT)
             item.priority = task.priority
             item.is_completed = task.is_completed
+            item.card_color = task.color
             item.open_detail_callback = self.open_task_detail
             container.add_widget(item)
 
@@ -110,7 +122,8 @@ class DashboardScreen(Screen):
         """
         app: App = App.get_running_app()
         detail_screen = app.root.get_screen("task_detail")  # type: ignore[attr-defined]
-        detail_screen.load_task(task_id)
+        detail_screen.current_task_id = task_id
+        detail_screen.load_task()
         app.root.current = "task_detail"  # type: ignore[attr-defined]
 
     def logout(self) -> None:

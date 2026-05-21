@@ -12,6 +12,13 @@
 
 
 <LoginScreen>:
+    canvas.before:
+        Color:
+            rgba: 0.94, 0.98, 0.92, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     BoxLayout:
         orientation: "vertical"
         padding: dp(20)
@@ -54,6 +61,9 @@
             text: "Login"
             size_hint_y: None
             height: dp(45)
+            background_normal: ""
+            background_color: 0.145, 0.827, 0.404, 1
+            color: 1, 1, 1, 1
             on_release:
                 root.attempt_login(username_input.text, password_input.text)
 
@@ -61,6 +71,9 @@
             text: "Create account"
             size_hint_y: None
             height: dp(40)
+            background_normal: ""
+            background_color: 0.094, 0.467, 0.949, 1
+            color: 1, 1, 1, 1
             on_release:
                 from kivy.factory import Factory
                 popup = Factory.CreateUserPopup()
@@ -72,6 +85,13 @@
 
 
 <DashboardScreen>:
+    canvas.before:
+        Color:
+            rgba: 0.96, 0.97, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     BoxLayout:
         orientation: "vertical"
         padding: dp(10)
@@ -79,33 +99,61 @@
 
         BoxLayout:
             size_hint_y: None
-            height: dp(40)
+            height: dp(48)
             spacing: dp(10)
+            canvas.before:
+                Color:
+                    rgba: 0.094, 0.467, 0.949, 1
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
 
             TextInput:
                 id: search_input
                 hint_text: "Search by title or module..."
+                background_color: 1, 1, 1, 1
+                multiline: False
+                size_hint_x: 0.75
                 on_text: root.on_search_query(root, self.text)
 
             Button:
                 text: "Logout"
-                size_hint_x: None
-                width: dp(90)
+                size_hint_x: 0.25
+                background_normal: ""
+                background_color: 1, 1, 1, 1
+                color: 0.094, 0.467, 0.949, 1
                 on_release: root.logout()
 
         BoxLayout:
+            orientation: "vertical"
             size_hint_y: None
-            height: dp(40)
+            height: self.minimum_height
+            spacing: dp(4)
 
             Label:
-                text: "Your Tasks"
+                text: root.welcome_text
                 font_size: "18sp"
+                size_hint_y: None
+                height: self.texture_size[1] + dp(8)
+                color: 0.1, 0.1, 0.1, 1
 
-            Button:
-                text: "Add Task"
-                size_hint_x: None
-                width: dp(120)
-                on_release: root.open_add_task()
+            BoxLayout:
+                size_hint_y: None
+                height: dp(48)
+                spacing: dp(10)
+
+                Label:
+                    text: "Your Tasks"
+                    font_size: "18sp"
+                    size_hint_x: 0.7
+
+                Button:
+                    text: "Add Task"
+                    size_hint_x: 0.3
+                    background_normal: ""
+                    background_color: 0.094, 0.467, 0.949, 1
+                    color: 1, 1, 1, 1
+                    on_release: root.open_add_task()
 
         ScrollView:
             do_scroll_x: False
@@ -137,7 +185,7 @@
 
     canvas.before:
         Color:
-            rgba: (0.8, 1, 0.8, 1) if self.priority == "Low" else ((1, 1, 0.8, 1) if self.priority == "Medium" else (1, 0.8, 0.8, 1))
+            rgba: root.card_color
         RoundedRectangle:
             radius: [dp(6), dp(6), dp(6), dp(6)]
             pos: self.pos
@@ -210,12 +258,29 @@
                     height: dp(40)
                     multiline: False
 
-                TextInput:
-                    id: module_input
-                    hint_text: "Module / Course"
+                BoxLayout:
                     size_hint_y: None
                     height: dp(40)
-                    multiline: False
+                    spacing: dp(10)
+
+                    Spinner:
+                        id: module_spinner
+                        text: "Math"
+                        values: ["Math", "Science", "English", "Business", "Other"]
+                        size_hint_x: 0.55
+                        size_hint_y: None
+                        height: dp(40)
+                        on_text: root.on_module_selected(self.text)
+
+                    TextInput:
+                        id: module_input
+                        hint_text: "Other module"
+                        size_hint_x: 0.45
+                        size_hint_y: None
+                        height: dp(40)
+                        multiline: False
+                        disabled: True
+                        opacity: 0
 
                 TextInput:
                     id: due_date_input
@@ -231,11 +296,36 @@
 
                     Button:
                         text: "Upload image"
+                        background_normal: ""
+                        background_color: 0.145, 0.827, 0.404, 1
+                        color: 1, 1, 1, 1
                         on_release: root.open_image_picker()
 
                     Button:
                         text: "Use camera"
+                        background_normal: ""
+                        background_color: 0.094, 0.467, 0.949, 1
+                        color: 1, 1, 1, 1
                         on_release: root.open_camera()
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(40)
+                    spacing: dp(10)
+
+                    Label:
+                        text: "Task color:"
+                        size_hint_x: None
+                        width: dp(90)
+                        color: 0.15, 0.15, 0.15, 1
+
+                    Spinner:
+                        id: color_spinner
+                        text: root.color_name
+                        values: ["Default", "WhatsApp Green", "Facebook Blue", "Yellow", "Red"]
+                        size_hint_y: None
+                        height: dp(40)
+                        on_text: root.on_color_selected(self.text)
 
                 Label:
                     id: image_path_label
@@ -321,10 +411,16 @@
 
                 Button:
                     text: "Cancel"
+                    background_normal: ""
+                    background_color: 0.6, 0.6, 0.6, 1
+                    color: 1, 1, 1, 1
                     on_release: root.cancel()
 
                 Button:
                     text: "Save"
+                    background_normal: ""
+                    background_color: 0.094, 0.467, 0.949, 1
+                    color: 1, 1, 1, 1
                     on_release: root.submit_form()
 
 
@@ -393,10 +489,16 @@
 
             Button:
                 text: "Back"
+                background_normal: ""
+                background_color: 0.145, 0.827, 0.404, 1
+                color: 1, 1, 1, 1
                 on_release: root.back_to_dashboard()
 
             Button:
                 text: "Toggle Complete"
+                background_normal: ""
+                background_color: 0.094, 0.467, 0.949, 1
+                color: 1, 1, 1, 1
                 on_release: root.toggle_completion()
 
         BoxLayout:
@@ -406,11 +508,16 @@
 
             Button:
                 text: "Edit"
+                background_normal: ""
+                background_color: 0.094, 0.467, 0.949, 1
+                color: 1, 1, 1, 1
                 on_release: root.open_edit()
 
             Button:
                 text: "Delete"
+                background_normal: ""
                 background_color: 0.8, 0.1, 0.1, 1
+                color: 1, 1, 1, 1
                 on_release:
                     app = App.get_running_app()
                     app.open_delete_confirmation(root)
@@ -489,10 +596,16 @@
 
             Button:
                 text: "Cancel"
+                background_normal: ""
+                background_color: 0.6, 0.6, 0.6, 1
+                color: 1, 1, 1, 1
                 on_release: root.dismiss()
 
             Button:
                 text: "Create"
+                background_normal: ""
+                background_color: 0.094, 0.467, 0.949, 1
+                color: 1, 1, 1, 1
                 on_release:
                     root.parent_screen.create_user(create_username_input.text, create_password_input.text, create_password_confirm_input.text)
                     root.dismiss()

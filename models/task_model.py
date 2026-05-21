@@ -11,7 +11,7 @@ it can be stored in JSON.
 
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Dict, Any, Optional
+from typing import Dict, Any, List, Optional
 import uuid
 
 
@@ -36,6 +36,7 @@ class TaskModel:
     priority: str
     notes: str = ""
     image_path: str = ""
+    color: List[float] = field(default_factory=lambda: [0.94, 0.94, 0.94, 1])
     is_completed: bool = False
     task_id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
@@ -57,6 +58,7 @@ class TaskModel:
             "priority": self.priority,
             "notes": self.notes,
             "image_path": self.image_path,
+            "color": self.color,
             "is_completed": self.is_completed,
         }
 
@@ -82,6 +84,7 @@ class TaskModel:
             priority=data.get("priority", "Medium"),
             notes=data.get("notes", ""),
             image_path=data.get("image_path", ""),
+            color=data.get("color", [0.94, 0.94, 0.94, 1]),
             is_completed=bool(data.get("is_completed", False)),
         )
 

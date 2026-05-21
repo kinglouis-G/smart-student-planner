@@ -10,14 +10,13 @@ It validates user input and persists changes via the DataManager.
 import os
 import uuid
 from datetime import date
-from typing import Tuple
+from typing import Dict, List, Optional, Tuple
 
 from kivy.app import App
 from kivy.metrics import dp
-from kivy.properties import BooleanProperty, StringProperty
+from kivy.properties import BooleanProperty, ListProperty, StringProperty
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.camera import Camera
 from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.screenmanager import Screen
@@ -40,6 +39,16 @@ class AddTaskScreen(Screen):
     is_edit_mode = BooleanProperty(False)
     editing_task_id = StringProperty("")
     image_path = StringProperty("")
+    selected_color = ListProperty([0.94, 0.94, 0.94, 1])
+    color_name = StringProperty("Default")
+
+    COLOR_CHOICES: Dict[str, List[float]] = {
+        "Default": [0.94, 0.94, 0.94, 1],
+        "WhatsApp Green": [0.145, 0.827, 0.404, 1],
+        "Facebook Blue": [0.094, 0.467, 0.949, 1],
+        "Yellow": [1, 0.82, 0.2, 1],
+        "Red": [1, 0.4, 0.4, 1],
+    }
 
     def on_pre_enter(self, *args) -> None:
         """
@@ -76,14 +85,22 @@ class AddTaskScreen(Screen):
         """Clear all form fields."""
         ids = self.ids
         ids.title_input.text = ""
+        ids.module_spinner.text = "Math"
         ids.module_input.text = ""
         ids.due_date_input.text = ""
         ids.notes_input.text = ""
         ids.priority_spinner.text = "Medium"
         ids.completed_checkbox.active = False
         self.image_path = ""
+        self.selected_color = self.COLOR_CHOICES["Default"]
+        self.color_name = "Default"
         if "image_path_label" in ids:
             ids.image_path_label.text = "No image selected"
+        if "color_spinner" in ids:
+            ids.color_spinner.text = self.color_name
+        if "module_input" in ids:
+            ids.module_input.disabled = True
+            ids.module_input.opacity = 0
 
     def _populate_form_from_task(self) -> None:
         """
@@ -96,14 +113,21 @@ class AddTaskScreen(Screen):
 
         ids = self.ids
         ids.title_input.text = task.title
-        ids.module_input.text = task.module
+        ids.module_spinner.text = task.module if task.module in ["Math", "Science", "English", "Business", "Other"] else "Other"
+        ids.module_input.text = task.module if ids.module_spinner.text == "Other" else ""
+        ids.module_input.disabled = ids.module_spinner.text != "Other"
+        ids.module_input.opacity = 1 if ids.module_spinner.text == "Other" else 0
         ids.due_date_input.text = task.due_date.strftime(task.DATE_FORMAT)
         ids.notes_input.text = task.notes
         ids.priority_spinner.text = task.priority
         ids.completed_checkbox.active = task.is_completed
         self.image_path = task.image_path
+        self.selected_color = task.color
+        self.color_name = self._get_color_name(task.color)
         if "image_path_label" in ids:
             ids.image_path_label.text = task.image_path or "No image selected"
+        if "color_spinner" in ids:
+            ids.color_spinner.text = self.color_name
 
     def _validate_form(self, title: str, module: str, due_date_str: str, priority: str) -> Tuple[bool, str]:
         """
@@ -141,6 +165,7 @@ class AddTaskScreen(Screen):
             priority=priority,
             notes=notes,
             image_path=self.image_path,
+            color=self.selected_color,
             is_completed=is_completed,
         )
 
@@ -150,7 +175,9 @@ class AddTaskScreen(Screen):
         """
         ids = self.ids
         title = ids.title_input.text
-        module = ids.module_input.text
+        module = ids.module_spinner.text
+        if module == "Other":
+            module = ids.module_input.text
         due_date_str = ids.due_date_input.text
         priority = ids.priority_spinner.text
         notes = ids.notes_input.text
@@ -177,6 +204,7 @@ class AddTaskScreen(Screen):
                 priority=priority,
                 notes=notes,
                 image_path=self.image_path,
+                color=self.selected_color,
                 is_completed=is_completed,
             )
             self.data_manager.update_task(existing.task_id, updated_task)
@@ -194,6 +222,30 @@ class AddTaskScreen(Screen):
     def save_task(self, *args, **kwargs) -> None:
         """Alias for submit_form used by older kv bindings."""
         self.submit_form()
+
+    def _get_color_name(self, color: List[float]) -> str:
+        """Return a color name for the given RGBA value."""
+        for name, value in self.COLOR_CHOICES.items():
+            if value == color:
+                return name
+        return "Default"
+
+    def on_color_selected(self, selected_name: str) -> None:
+        """Handle color selection changes from the add task form."""
+        self.color_name = selected_name
+        self.selected_color = self.COLOR_CHOICES.get(selected_name, self.COLOR_CHOICES["Default"])
+
+    def on_module_selected(self, selected_module: str) -> None:
+        """Handle module spinner selection changes."""
+        ids = self.ids
+        if "module_input" in ids:
+            if selected_module == "Other":
+                ids.module_input.disabled = False
+                ids.module_input.opacity = 1
+            else:
+                ids.module_input.disabled = True
+                ids.module_input.opacity = 0
+                ids.module_input.text = ""
 
     def _update_image_label(self) -> None:
         ids = self.ids
@@ -230,6 +282,8 @@ class AddTaskScreen(Screen):
     def open_camera(self) -> None:
         """Open a camera popup for taking a new photo."""
         try:
+            from kivy.uix.camera import Camera
+
             camera = Camera(play=True, resolution=(640, 480), index=0)
         except Exception:
             self.error_message = "Camera access is unavailable on this device."
@@ -250,7 +304,7 @@ class AddTaskScreen(Screen):
         capture_btn.bind(on_release=lambda *_: self._capture_image(camera, popup))
         popup.open()
 
-    def _capture_image(self, camera: Camera, popup: Popup) -> None:
+    def _capture_image(self, camera: "Camera", popup: Popup) -> None:
         if not camera.texture:
             self.error_message = "Camera is not available." 
             return

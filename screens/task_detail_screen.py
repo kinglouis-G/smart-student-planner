@@ -21,6 +21,7 @@ class TaskDetailScreen(Screen):
     """
 
     task_id = StringProperty("")
+    current_task_id = StringProperty("")
     title_text = StringProperty("")
     module_text = StringProperty("")
     due_date_text = StringProperty("")
@@ -36,10 +37,18 @@ class TaskDetailScreen(Screen):
         app: App = App.get_running_app()
         return app.data_manager  # type: ignore[attr-defined]
 
-    def load_task(self, task_id: str) -> None:
+    def load_task(self, task_id: str | None = None) -> None:
         """
         Load a task from the DataManager into the screen properties.
         """
+        task_id = task_id or self.current_task_id
+        if not task_id:
+            self.info_message = "Task not found."
+            app: App = App.get_running_app()
+            app.root.current = "dashboard"  # type: ignore[attr-defined]
+            return
+
+        self.current_task_id = task_id
         self.task_id = task_id
         task = self.data_manager.get_task(task_id)
         if task is None:
@@ -75,6 +84,7 @@ class TaskDetailScreen(Screen):
 
         task = self.data_manager.get_task(self.task_id)
         if task is not None:
+            self.current_task_id = task.task_id
             self._update_from_task(task)
 
     def delete_task(self) -> None:
